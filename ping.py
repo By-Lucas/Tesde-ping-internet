@@ -1,8 +1,35 @@
 import subprocess
 import os
 from tkinter import *
-from tkinter import ttk, messagebox, Tk
-from tkinter import scrolledtext
+import functools
+import tkinter as tk
+from concurrent import futures
+from tkinter import ttk, messagebox, Tk, tix, scrolledtext
+import time
+import sys
+
+thread_pool_executor = futures.ThreadPoolExecutor(max_workers=1)
+
+def tk_after(target):
+
+    @functools.wraps(target)
+    def wrapper(self, *args, **kwargs):
+        args = (self,) + args
+        self.after(0, target, *args, **kwargs)
+
+    return wrapper
+
+def submit_to_pool_executor(executor):
+
+    def decorator(target):
+
+        @functools.wraps(target)
+        def wrapper(*args, **kwargs):
+            return executor.submit(target, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 janela  = Tk()
@@ -31,14 +58,16 @@ class janela1():
         self.caminho_ping = Entry(self.janela, font='arial 12')
         self.caminho_ping.place(x=150, y=30, height=40)
 
+        Label(self.janela, font='arial 12', text='Quantidade:', fg='white',background='#0B3861').place(x=490, y=30, height=40)
+        self.quantidade = Entry(self.janela, font='arial 12')
+        self.quantidade.place(x=600, y=30, width=70, height=40)
+
         self.label1 = Label(self.janela, bg='yellow', text='RESULTADO PING', fg='green', font='arial 14')
         self.label1.place(x=250, y=400, width=250, height=60)
 
-
-
-        self.textos = scrolledtext.ScrolledText(self.janela,width=50,height=10)
+        self.textos = scrolledtext.ScrolledText(self.janela,width=90,height=17)
         #self.textos.insert(INSERT,'oi' )
-        self.textos.place(x=200, y=100)
+        self.textos.place(x=30, y=100)
 
     def progres_bar(self):
         pb = ttk.Progressbar(self.janela, orient="horizontal", length=300,mode="determinate")
@@ -46,22 +75,19 @@ class janela1():
         self.label1['text'] = pb
         pb.start()
         
-        
-        
-        
 
+    @submit_to_pool_executor(thread_pool_executor)
     def ping_test (self):
+        self.textos.delete("1.0","end")
+        self.textos.insert(INSERT, "CRIADO POR: LUCAS SILVA\nWHATSAOO: 74981199190\n\n")
+
         hostname = self.caminho_ping.get()#"www.google.com" #example
-        response = os.system(f"ping -n 10 {hostname}")
+        response = os.popen(f"ping -n {self.quantidade.get()} {hostname}")
+
+        for line in response:
+            self.textos.insert(INSERT,line)
+
         
-        self.label1["text"] = 'Percas', response
-
-        #and then check the response...
-        if response == 0:
-            print (hostname, 'Esta para cima!')
-            self.textos.insert(INSERT,'\nTotal de pecas: {} de {}'.format(response, hostname))
-        else:
-            print (hostname, 'Esta para baixo!')
             
-
-janela1()
+if __name__== '__main__':
+    janela1()
